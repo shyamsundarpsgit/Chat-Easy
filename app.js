@@ -8,6 +8,7 @@ const server = http.createServer(app);
 const socketIo = require('socket.io');
 
 const io = socketIo(server);
+
 //Run when client connects
 io.on('connection',(socket)=>{
     console.log('New WS connection')
