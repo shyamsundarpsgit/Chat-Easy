@@ -6,9 +6,15 @@ const app = express();
 const server = http.createServer(app);
 const socketIo = require("socket.io");
 const { formatMessage } = require("./utils/messages");
-const { userJoin, getCurrentUser } = require("./utils/users");
+const {
+  userJoin,
+  getCurrentUser,
+  userLeave,
+  getRoomUsers,
+} = require("./utils/users");
 const io = socketIo(server);
 const botName = "ChatEasy Bot";
+
 //Run when client connects
 io.on("connection", (socket) => {
   socket.on("joinRoom", ({ username, room }) => {
@@ -23,18 +29,37 @@ io.on("connection", (socket) => {
       .to(user.room)
       .emit(
         "message",
-        formatMessage(botName, `${username} has Joined the chat`)
+        formatMessage(botName, `${user.username} has Joined the chat`)
       );
+
+    //Send users and rooom info
+    io.to(user.room).emit("roomUsers", {
+      room: user.room,
+      users: getRoomUsers(user.room),
+    });
   });
 
   //Listen for chatMessage
   socket.on("chatMessage", (msg) => {
-    io.emit("message", formatMessage("USER", msg));
+    const user = getCurrentUser(socket.id);
+
+    io.to(user.room).emit("message", formatMessage(user.username, msg));
   });
 
   //Runs when user disconnects
   socket.on("disconnect", () => {
-    io.emit("message", formatMessage(botName, "A user left the chat"));
+    const user = userLeave(socket.id);
+    if (user) {
+      io.to(user.room).emit(
+        "message",
+        formatMessage(botName, ` ${user.username} left the chat`)
+      );
+    }
+    //Send users and rooom info
+    io.to(user.room).emit("roomUsers", {
+      room: user.room,
+      users: getRoomUsers(user.room),
+    });
   });
 });
 
